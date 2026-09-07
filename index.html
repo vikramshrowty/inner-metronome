@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Inner Metronome | Timing Trainer</title>
+    <link rel="stylesheet" href="/src/style.css" />
+  </head>
+  <body>
+    <div class="app-container">
+      <header>
+        <div class="header-top">
+          <h1>Inner Metronome</h1>
+          <button class="btn btn-outline btn-sm hidden" id="btnOpenSettings" title="Audio & Calibration Settings">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="3"/>
+              <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+            </svg>
+            <span id="headerOffsetBadge" style="font-family: monospace; font-weight: 700;">Offset: 60ms</span>
+          </button>
+        </div>
+        <p>Acoustic latency calibration &bull; Random beat drops &bull; Micro-timing error analysis</p>
+      </header>
+
+      <!-- VIEW 1: FORCED CALIBRATION ONBOARDING -->
+      <section class="card calibration-hero" id="viewCalibration">
+        <div class="card-header">
+          <div class="card-title">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/>
+            </svg>
+            System Calibration
+          </div>
+          <span class="badge badge-warning" id="calibBadge">Calibration Required</span>
+        </div>
+
+        <p style="color: var(--text-muted); font-size: 0.95rem; margin-bottom: 16px;">
+          We need to calibrate your system before we begin.
+        </p>
+
+        <div class="calib-instructions">
+          <div class="instruction-step">
+            <span class="step-num">1</span>
+            <span>Turn up your device speaker volume to a clear, audible level.</span>
+          </div>
+          <div class="instruction-step">
+            <span class="step-num">2</span>
+            <span>Ensure microphone permission is allowed.</span>
+          </div>
+          <div class="instruction-step">
+            <span class="step-num">3</span>
+            <span>Click below. Keep the room quiet while 3 short tones play.</span>
+          </div>
+        </div>
+
+        <div style="display: flex; flex-direction: column; align-items: center; gap: 16px; margin: 24px 0;">
+          <button class="btn btn-primary btn-large" id="btnCalibrate">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
+              <path d="M15.54 8.46a5 5 0 0 1 0 7.07"/>
+              <path d="M19.07 4.93a10 10 0 0 1 0 14.14"/>
+            </svg>
+            Calibrate System
+          </button>
+
+          <div id="calibStatus" style="font-size: 0.95rem; color: var(--text-muted); text-align: center; min-height: 24px;">
+            Ready to calibrate.
+          </div>
+        </div>
+
+        <!-- Post-calibration action bar -->
+        <div id="postCalibActions" class="post-calib-box hidden">
+          <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px;">
+            <div>
+              <div style="font-weight: 700; color: #34d399; font-size: 1.05rem;" id="calibSuccessTitle">
+                ✓ System Calibrated
+              </div>
+              <div style="font-size: 0.82rem; color: var(--text-muted);">
+                Calibration complete. You can recalibrate anytime in Settings.
+              </div>
+            </div>
+            <button class="btn btn-success btn-large" id="btnContinueToTrainer">
+              Enter Metronome Trainer &rarr;
+            </button>
+          </div>
+        </div>
+
+        <div style="display: flex; justify-content: center; margin-top: 18px;">
+          <button class="btn-link" id="btnSkipCalibration">
+            Skip calibration &rarr;
+          </button>
+        </div>
+      </section>
+
+      <!-- VIEW 2: METRONOME & CLAP TRAINER (HIDDEN INITIALLY) -->
+      <div id="viewTrainer" class="hidden">
+        <!-- 2. METRONOME CONTROLS & BEAT DISPLAY -->
+        <section class="card" style="margin-bottom: 20px;">
+          <div class="card-header">
+            <div class="card-title">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="10"/>
+                <polyline points="12 6 12 12 16 14"/>
+              </svg>
+              Metronome & Dropout Configuration
+            </div>
+            <div id="micActiveBadge" style="font-size: 0.75rem; color: #10b981; display: flex; align-items: center; gap: 4px;">
+              <span style="width: 8px; height: 8px; background-color: #10b981; border-radius: 50%; display: inline-block;"></span>
+              Mic Active
+            </div>
+          </div>
+
+          <div class="controls-grid">
+            <div class="control-item">
+              <label for="bpmSlider">Tempo: <strong id="bpmValue" style="color: var(--accent); font-size: 1rem;">100 BPM</strong></label>
+              <div style="display: flex; gap: 8px; align-items: center;">
+                <button class="btn btn-outline" id="btnBpmMinus" style="padding: 6px 12px;">-5</button>
+                <input type="range" id="bpmSlider" min="50" max="200" value="100" style="flex: 1;" />
+                <button class="btn btn-outline" id="btnBpmPlus" style="padding: 6px 12px;">+5</button>
+              </div>
+            </div>
+
+            <div class="control-item">
+              <label>Dropout Training Mode:</label>
+              <div style="display: flex; align-items: center; justify-content: space-between; background-color: var(--bg-input); border: 1px solid var(--border); padding: 8px 12px; border-radius: 6px;">
+                <span id="currentDropModeDisplay" style="font-size: 0.88rem; font-weight: 600; color: #fbbf24;">Random (~10% drops)</span>
+                <button class="btn btn-outline btn-sm" id="btnMetroSettings" style="padding: 4px 10px; font-size: 0.78rem;" title="Configure Dropout Mode in Settings">
+                  ⚙ Change
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Informative Instructions Banner -->
+          <div class="session-instructions" id="sessionInstructions">
+            <div class="instructions-content">
+              <span class="instructions-icon" id="instructionIcon">👏</span>
+              <div class="instructions-text">
+                <strong id="instructionTitle">Clap along with each click!</strong>
+                <span id="instructionBody">Keep clapping steadily in rhythm. When clicks randomly drop, keep your tempo — the metronome will measure how on-beat you are.</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Beat Visualizer Dots -->
+          <div class="metronome-visualizer">
+            <div class="beat-indicators">
+              <div class="beat-dot accent" id="dot1">1</div>
+              <div class="beat-dot" id="dot2">2</div>
+              <div class="beat-dot" id="dot3">3</div>
+              <div class="beat-dot" id="dot4">4</div>
+            </div>
+            <div class="drop-banner" id="dropBanner">
+              <!-- Dynamic notice when dropped beat occurs -->
+            </div>
+            <button class="btn btn-success btn-large" id="btnTogglePlay">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polygon points="5 3 19 12 5 21 5 3"/>
+              </svg>
+              Start Metronome
+            </button>
+          </div>
+        </section>
+
+        <!-- 3. TIMING RUNWAY & REAL-TIME EVALUATION -->
+        <section class="card" style="margin-bottom: 20px;">
+          <div class="card-header">
+            <div class="card-title">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="18" y1="20" x2="18" y2="10"/>
+                <line x1="12" y1="20" x2="12" y2="4"/>
+                <line x1="6" y1="20" x2="6" y2="14"/>
+              </svg>
+              Clap Timing Analysis
+            </div>
+            <span style="font-size: 0.8rem; color: var(--text-muted);">Clap along; dropped beats are measured!</span>
+          </div>
+
+          <div class="lane-container">
+            <canvas id="timingLane"></canvas>
+          </div>
+
+          <div class="recent-result-banner" id="resultBanner">
+            <span style="color: var(--text-muted); font-size: 1rem; font-weight: normal;">
+              Listen to the groove and clap. Claps on dropped beats will be evaluated.
+            </span>
+          </div>
+
+          <!-- Musician Benchmark & Tier Card -->
+          <div class="benchmark-card" id="benchmarkCard">
+            <div class="benchmark-header">
+              <div>
+                <span class="benchmark-tag">RHYTHMIC PRECISION TIER</span>
+                <div class="benchmark-tier-title" id="tierTitle">Evaluating rhythm precision...</div>
+              </div>
+              <div class="tier-badge" id="tierBadge">Need 3 claps</div>
+            </div>
+            <div class="benchmark-desc" id="tierDesc">
+              Clap along on silent beats. After 3 claps, we calculate your timing consistency against scientific studies of jazz drummers and musicians.
+            </div>
+
+            <!-- Visual Benchmark Scale -->
+            <div class="scale-container">
+              <div class="scale-labels">
+                <span style="color: #10b981;">Pro Jazz (≤12ms)</span>
+                <span style="color: #38bdf8;">Trained (13–18ms)</span>
+                <span style="color: #fbbf24;">Good (19–28ms)</span>
+                <span style="color: #f97316;">Non-Musician (29–42ms)</span>
+                <span style="color: #ef4444;">Needs Practice (>42ms)</span>
+              </div>
+              <div class="scale-bar">
+                <div class="scale-segment seg-pro" style="flex: 12;" title="Elite Jazz: 0–12ms"></div>
+                <div class="scale-segment seg-trained" style="flex: 6;" title="Trained Musician: 13–18ms"></div>
+                <div class="scale-segment seg-good" style="flex: 10;" title="Good / Intermediate: 19–28ms"></div>
+                <div class="scale-segment seg-typical" style="flex: 14;" title="Typical Non-Musician: 29–42ms"></div>
+                <div class="scale-segment seg-erratic" style="flex: 18;" title="Needs Practice: >42ms"></div>
+                <div class="scale-needle hidden" id="scaleNeedle">
+                  <div class="needle-arrow"></div>
+                  <div class="needle-bubble" id="needleBubble">You: ±15ms</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="benchmark-footnote">
+              <strong>Scientific Benchmark:</strong> In empirical studies (Friberg &amp; Sundstr&ouml;m 2002; Repp 2005), professional jazz rhythm sections and studio drummers maintain an internal standard deviation of <strong>6–12 ms</strong>, while typical non-musicians exhibit <strong>25–45 ms</strong> variability.
+            </div>
+          </div>
+
+          <!-- Session Statistics -->
+          <div class="stats-grid">
+            <div class="stat-box">
+              <div class="stat-value" id="statBias" style="color: #38bdf8;">--</div>
+              <div class="stat-label">Systematic Bias (ms)</div>
+            </div>
+            <div class="stat-box">
+              <div class="stat-value" id="statJitter" style="color: #818cf8;">--</div>
+              <div class="stat-label">Jitter / StdDev (ms)</div>
+            </div>
+            <div class="stat-box">
+              <div class="stat-value" id="statStreak" style="color: #10b981;">0</div>
+              <div class="stat-label">Current Streak</div>
+            </div>
+            <div class="stat-box">
+              <div class="stat-value" id="statBestStreak" style="color: #34d399;">0</div>
+              <div class="stat-label">Best Streak</div>
+            </div>
+            <div class="stat-box">
+              <div class="stat-value" id="statAccuracy" style="color: #fbbf24;">--</div>
+              <div class="stat-label">Accuracy (&plusmn;35ms)</div>
+            </div>
+          </div>
+
+          <div style="display: flex; justify-content: flex-end; margin-top: 14px;">
+            <button class="btn btn-outline" id="btnResetStats" style="font-size: 0.85rem; padding: 6px 14px;">
+              Reset Stats
+            </button>
+          </div>
+        </section>
+
+        <!-- 4. GUIDE & REALITY OF AUDIO LATENCY -->
+        <div class="guide-box">
+          <strong>How it works:</strong>
+          <ul style="margin-left: 20px; margin-top: 6px;">
+            <li><strong>Dropped Click Isolation:</strong> On dropped clicks, the speaker produces 0 sound. Any transient detected by the microphone is guaranteed to be your hands clapping—eliminating speaker-to-mic bleed.</li>
+            <li><strong>Offset Calculation:</strong> $\text{Error} = (T_{\text{detected}} - \Delta_{\text{calibrated}}) - T_{\text{scheduled}}$. Negative values mean you rushed; positive values mean you dragged.</li>
+            <li><strong>Jitter vs Bias:</strong> Bias shows if you lean early or late. Jitter ($\sigma$) measures your rhythm consistency regardless of bias. Drummers typically aim for $\sigma \le 18\text{ ms}$.</li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- SETTINGS & CALIBRATION MODAL -->
+      <div class="modal-backdrop hidden" id="settingsModal">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h3 style="font-size: 1.15rem; font-weight: 700; display: flex; align-items: center; gap: 8px;">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="3"/>
+                <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+              </svg>
+              Audio & Latency Settings
+            </h3>
+            <button class="btn-close" id="btnCloseSettings">&times;</button>
+          </div>
+
+          <div style="display: flex; flex-direction: column; gap: 20px; margin-top: 16px;">
+            <!-- Re-run acoustic calibration -->
+            <div style="background-color: var(--bg-input); padding: 14px; border-radius: 8px; border: 1px solid var(--border);">
+              <div style="font-weight: 600; font-size: 0.95rem; margin-bottom: 6px;">Acoustic Chirp Re-calibration</div>
+              <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 12px;">
+                Changed speakers or audio output? Run 3 chirps to re-measure &Delta;<sub>out</sub> + &Delta;<sub>in</sub>.
+              </p>
+              <button class="btn btn-primary" id="btnModalCalibrate">
+                Run Chirp Calibration
+              </button>
+              <div id="modalCalibStatus" style="font-size: 0.85rem; color: var(--text-muted); margin-top: 8px; min-height: 20px;"></div>
+            </div>
+
+            <!-- Manual offset slider -->
+            <div class="slider-group">
+              <label for="modalLatencySlider">
+                <span>Hardware Latency Offset (&Delta;<sub>out</sub> + &Delta;<sub>in</sub>):</span>
+                <span id="modalLatencyDisplay" style="font-family: monospace; font-weight: 700; color: var(--accent);">60 ms</span>
+              </label>
+              <input type="range" id="modalLatencySlider" min="0" max="250" value="60" step="1" />
+              <div style="font-size: 0.78rem; color: var(--text-muted); margin-top: 2px;">
+                Increase if your claps register as late; decrease if registering as early.
+              </div>
+            </div>
+
+            <!-- Dropout Training Mode -->
+            <div class="control-item">
+              <label for="dropModeSelect" style="font-size: 0.95rem; font-weight: 600; color: var(--text-main);">
+                Dropout Training Mode:
+              </label>
+              <select id="dropModeSelect" style="width: 100%; margin-top: 4px;">
+                <option value="random_10" selected>Random Drops (~10% of beats) &mdash; Default</option>
+                <option value="random_25">Moderate Drops (~25% of beats)</option>
+                <option value="random_33">Frequent Drops (~33% of beats)</option>
+                <option value="bar4_silent">Bar 4 Silent (3 bars click, 1 bar drop)</option>
+                <option value="every4th">Every 4th Beat Dropped</option>
+                <option value="none">Continuous Click (No Drops)</option>
+              </select>
+              <div style="font-size: 0.78rem; color: var(--text-muted); margin-top: 2px;">
+                10% random drops test unexpected gaps without interrupting your musical flow.
+              </div>
+            </div>
+
+            <!-- Sensitivity slider -->
+            <div class="slider-group">
+              <label for="sensSlider">
+                <span>Mic Clap Sensitivity:</span>
+                <span id="sensVal" style="color: var(--accent); font-weight: 700;">4.5x</span>
+              </label>
+              <input type="range" id="sensSlider" min="2.0" max="8.0" step="0.5" value="4.5" />
+              <div style="font-size: 0.78rem; color: var(--text-muted); margin-top: 2px;">
+                Higher values require louder claps to avoid background triggers.
+              </div>
+            </div>
+          </div>
+
+          <div style="display: flex; justify-content: flex-end; margin-top: 24px;">
+            <button class="btn btn-primary" id="btnSaveSettings">
+              Done
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
