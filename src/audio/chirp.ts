@@ -94,6 +94,9 @@ export class AcousticCalibrator {
   /**
    * Runs N trials, emits a chirp in each, records mic response, and computes median loopback latency.
    */
+  /**
+   * Runs N trials, emits a chirp in each, records mic response, and computes median loopback latency.
+   */
   async calibrate(
     numTrials = 3,
     onProgress?: (trial: number, total: number) => void
@@ -109,7 +112,7 @@ export class AcousticCalibrator {
       trials.push(trialResult.latencyMs);
       snrs.push(trialResult.snr);
       // Brief pause between trials for acoustic decay
-      await new Promise((res) => setTimeout(res, 250));
+      await new Promise((res) => setTimeout(res, 220));
     }
 
     // Sort to obtain median
@@ -120,9 +123,9 @@ export class AcousticCalibrator {
     // Check consistency between trials
     const maxDiff = Math.max(...trials) - Math.min(...trials);
     let confidence: 'high' | 'medium' | 'low' = 'high';
-    if (avgSnr < 2.5 || maxDiff > 35) {
+    if (avgSnr < 2.5 || maxDiff > 30) {
       confidence = 'low';
-    } else if (maxDiff > 18 || avgSnr < 4.0) {
+    } else if (maxDiff > 15 || avgSnr < 4.0) {
       confidence = 'medium';
     }
 
@@ -134,34 +137,79 @@ export class AcousticCalibrator {
     };
   }
 
+  /**
+   * Closed-loop verification test:
+   * Emits a test signal scheduled at a hardware audio clock timestamp,
+   * measures the true acoustic loopback arrival, and checks residual error against calibratedOffsetMs.
+   */
+  async verifyCalibration(calibratedOffsetMs: number): Promise<{
+    measuredLatencyMs: number;
+    calibratedOffsetMs: number;
+    residualErrorMs: number;
+    passed: boolean;
+    snr: number;
+  }> {
+    const trial = await this.runSingleTrial();
+    const measuredLatencyMs = Math.round(trial.latencyMs);
+    const residualErrorMs = Math.round(trial.latencyMs - calibratedOffsetMs);
+    const passed = Math.abs(residualErrorMs) <= 4;
+
+    return {
+      measuredLatencyMs,
+      calibratedOffsetMs,
+      residualErrorMs,
+      passed,
+      snr: parseFloat(trial.snr.toFixed(2)),
+    };
+  }
+
   private async runSingleTrial(): Promise<{ latencyMs: number; snr: number }> {
     const sampleRate = this.ctx.sampleRate;
-    const recordDurationSec = 0.55;
-    const totalSamples = Math.floor(sampleRate * recordDurationSec);
+    const searchDurationSec = 0.45; // 450ms search window
+    const totalSamples = Math.floor(sampleRate * searchDurationSec);
     const recordedBuffer = new Float32Array(totalSamples);
-    let samplesRecorded = 0;
 
     const micSource = this.ctx.createMediaStreamSource(this.stream);
-    
-    // Use ScriptProcessor as simple guaranteed recorder for calibration window
-    const processor = this.ctx.createScriptProcessor(2048, 1, 1);
-    
+    // Buffer size 1024 samples gives high temporal density for capturing hardware timestamps
+    const processor = this.ctx.createScriptProcessor(1024, 1, 1);
+
+    // Schedule chirp playback strictly on the Web Audio hardware clock (100ms in the future)
+    const scheduledPlayTime = this.ctx.currentTime + 0.10;
+
     const recordingPromise = new Promise<{ latencyMs: number; snr: number }>((resolve) => {
+      let isCompleted = false;
+
       processor.onaudioprocess = (e) => {
+        if (isCompleted) return;
+
+        // Determine the audio clock time of sample 0 of this buffer.
+        // In standard Web Audio, e.playbackTime provides the exact audio clock time.
+        // Fall back to ctx.currentTime if playbackTime is 0 or undefined.
+        const bufferStartTime = (e.playbackTime && e.playbackTime > 0)
+          ? e.playbackTime
+          : this.ctx.currentTime;
+
         const inputData = e.inputBuffer.getChannelData(0);
-        const remaining = totalSamples - samplesRecorded;
-        if (remaining > 0) {
-          const toCopy = Math.min(remaining, inputData.length);
-          recordedBuffer.set(inputData.subarray(0, toCopy), samplesRecorded);
-          samplesRecorded += toCopy;
+
+        // Hardware clock sample-locking:
+        // Map each incoming input sample directly to its offset relative to scheduledPlayTime
+        for (let j = 0; j < inputData.length; j++) {
+          const sampleAudioTime = bufferStartTime + (j / sampleRate);
+          const sampleOffsetFromPlay = sampleAudioTime - scheduledPlayTime;
+          const targetIndex = Math.round(sampleOffsetFromPlay * sampleRate);
+
+          if (targetIndex >= 0 && targetIndex < totalSamples) {
+            recordedBuffer[targetIndex] = inputData[j];
+          }
         }
 
-        if (samplesRecorded >= totalSamples) {
+        // Once the hardware clock has advanced past the search window
+        if (this.ctx.currentTime >= scheduledPlayTime + searchDurationSec) {
+          isCompleted = true;
           processor.disconnect();
           micSource.disconnect();
 
-          // Search candidate delay up to 400ms
-          const searchSamples = Math.floor(sampleRate * 0.4);
+          const searchSamples = Math.floor(sampleRate * 0.35); // Search up to 350ms
           const { delaySamples, snr } = computeCrossCorrelationPeak(
             recordedBuffer,
             this.chirpTemplate,
@@ -175,24 +223,22 @@ export class AcousticCalibrator {
     });
 
     micSource.connect(processor);
-    // Connect processor to destination with 0 gain to prevent feedback whistle while keeping processing active
     const muteGain = this.ctx.createGain();
     muteGain.gain.value = 0;
     processor.connect(muteGain);
     muteGain.connect(this.ctx.destination);
 
-    // Play chirp through main speakers
+    // Play chirp through main speakers exactly at scheduledPlayTime
     const chirpSource = this.ctx.createBufferSource();
     chirpSource.buffer = this.chirpBuffer;
-    
+
     const chirpGain = this.ctx.createGain();
-    chirpGain.gain.value = 0.8;
+    chirpGain.gain.value = 0.85;
     chirpSource.connect(chirpGain);
     chirpGain.connect(this.ctx.destination);
 
-    // Small delay to let mic buffer start collecting
-    await new Promise((r) => setTimeout(r, 40));
-    chirpSource.start();
+    // Audio hardware clock locked start - no setTimeout on JS thread!
+    chirpSource.start(scheduledPlayTime);
 
     return recordingPromise;
   }

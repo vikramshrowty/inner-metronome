@@ -75,13 +75,30 @@
               <div style="font-weight: 700; color: #34d399; font-size: 1.05rem;" id="calibSuccessTitle">
                 ✓ System Calibrated
               </div>
-              <div style="font-size: 0.82rem; color: var(--text-muted);">
-                Calibration complete. You can recalibrate anytime in Settings.
+              <div style="font-size: 0.82rem; color: var(--text-muted);" id="calibSuccessSub">
+                Offset measured. You can verify accuracy or proceed.
               </div>
             </div>
-            <button class="btn btn-success btn-large" id="btnContinueToTrainer">
-              Enter Metronome Trainer &rarr;
-            </button>
+            <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+              <button class="btn btn-secondary" id="btnVerifyCalib" style="font-size: 0.85rem; padding: 8px 14px;">
+                🔍 Verify Accuracy
+              </button>
+              <button class="btn btn-success btn-large" id="btnContinueToTrainer">
+                Enter Metronome Trainer &rarr;
+              </button>
+            </div>
+          </div>
+
+          <!-- Self-verification result panel -->
+          <div id="verifyResultPanel" class="hidden" style="margin-top: 14px; padding: 12px 14px; background: rgba(0,0,0,0.25); border-radius: 8px; border-left: 3px solid #38bdf8;">
+            <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px;">
+              <div id="verifyResultText" style="font-size: 0.88rem; color: var(--text-main);">
+                Testing acoustic loopback...
+              </div>
+              <button class="btn btn-secondary hidden" id="btnAutoTrim" style="font-size: 0.80rem; padding: 4px 10px; border-color: #38bdf8; color: #38bdf8;">
+                Auto-Trim to 0.0ms
+              </button>
+            </div>
           </div>
         </div>
 
@@ -302,9 +319,15 @@
                 <span id="modalLatencyDisplay" style="font-family: monospace; font-weight: 700; color: var(--accent);">60 ms</span>
               </label>
               <input type="range" id="modalLatencySlider" min="0" max="250" value="60" step="1" />
-              <div style="font-size: 0.78rem; color: var(--text-muted); margin-top: 2px;">
-                Increase if your claps register as late; decrease if registering as early.
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 6px; flex-wrap: wrap; gap: 8px;">
+                <div style="font-size: 0.78rem; color: var(--text-muted);">
+                  Auto-measured via acoustic loopback or manually adjusted.
+                </div>
+                <button class="btn btn-secondary" id="btnModalVerify" style="font-size: 0.78rem; padding: 4px 10px;">
+                  🔍 Verify Offset Now
+                </button>
               </div>
+              <div id="modalVerifyResult" class="hidden" style="margin-top: 6px; font-size: 0.82rem; padding: 6px 10px; border-radius: 6px; background: rgba(0,0,0,0.2);"></div>
             </div>
 
             <!-- Dropout Training Mode -->

@@ -25,6 +25,14 @@ const btnContinueToTrainer = document.getElementById('btnContinueToTrainer') as 
 const btnSkipCalibration = document.getElementById('btnSkipCalibration') as HTMLButtonElement;
 const calibSuccessTitle = document.getElementById('calibSuccessTitle') as HTMLElement;
 
+// Verification Elements (Hero & Modal)
+const btnVerifyCalib = document.getElementById('btnVerifyCalib') as HTMLButtonElement | null;
+const verifyResultPanel = document.getElementById('verifyResultPanel') as HTMLElement | null;
+const verifyResultText = document.getElementById('verifyResultText') as HTMLElement | null;
+const btnAutoTrim = document.getElementById('btnAutoTrim') as HTMLButtonElement | null;
+const btnModalVerify = document.getElementById('btnModalVerify') as HTMLButtonElement | null;
+const modalVerifyResult = document.getElementById('modalVerifyResult') as HTMLElement | null;
+
 // Calibration Elements (Hero)
 const btnCalibrate = document.getElementById('btnCalibrate') as HTMLButtonElement;
 const calibBadge = document.getElementById('calibBadge') as HTMLElement;
@@ -179,9 +187,9 @@ async function executeCalibration(
       calibBadge.className = 'badge badge-success';
       calibBadge.innerText = `Calibrated`;
       postCalibActions.classList.remove('hidden');
-      statusEl.innerHTML = `<span style="color: #34d399;">System calibration complete!</span>`;
+      statusEl.innerHTML = `<span style="color: #34d399;">System calibration complete (${result.latencyMs}ms offset)!</span>`;
     } else {
-      statusEl.innerHTML = `<span style="color: #34d399;">System re-calibrated successfully.</span>`;
+      statusEl.innerHTML = `<span style="color: #34d399;">System re-calibrated successfully (${result.latencyMs}ms offset).</span>`;
     }
   } catch (err) {
     console.error('Calibration error:', err);
@@ -190,6 +198,53 @@ async function executeCalibration(
     btn.disabled = false;
   }
 }
+
+// Verification Test Runner (Closed-Loop Ground Truth Check)
+async function runVerificationTest(statusEl: HTMLElement, autoTrimBtn?: HTMLButtonElement | null) {
+  if (autoTrimBtn) autoTrimBtn.classList.add('hidden');
+  statusEl.innerHTML = '<span style="color: var(--accent);">Emitting test pulse to verify speaker-to-mic loopback...</span>';
+
+  try {
+    const { ctx, stream } = await ensureAudio();
+    if (!calibrator) {
+      calibrator = new AcousticCalibrator(ctx, stream);
+    }
+
+    const res = await calibrator.verifyCalibration(calibratedLatencyMs);
+    const sign = res.residualErrorMs > 0 ? '+' : '';
+
+    if (res.passed) {
+      statusEl.innerHTML = `<span style="color: #34d399; font-weight: 600;">✓ Verification Passed:</span> Loopback arrival measured at <strong>${res.measuredLatencyMs}ms</strong> (Offset: ${res.calibratedOffsetMs}ms). Residual error is only <strong>${sign}${res.residualErrorMs}ms</strong> (accurate to ±4ms).`;
+    } else {
+      statusEl.innerHTML = `<span style="color: #fbbf24; font-weight: 600;">⚠️ Discrepancy detected:</span> Measured acoustic arrival is <strong>${res.measuredLatencyMs}ms</strong> (Offset was set to ${res.calibratedOffsetMs}ms &mdash; drift: <strong>${sign}${res.residualErrorMs}ms</strong>).`;
+      if (autoTrimBtn) {
+        autoTrimBtn.classList.remove('hidden');
+        autoTrimBtn.innerText = `Auto-Trim to ${res.measuredLatencyMs}ms`;
+        autoTrimBtn.onclick = () => {
+          updateCalibratedOffset(res.measuredLatencyMs);
+          statusEl.innerHTML = `<span style="color: #34d399;">✓ Offset updated to ${res.measuredLatencyMs}ms (Residual error now 0ms).</span>`;
+          autoTrimBtn.classList.add('hidden');
+        };
+      }
+    }
+  } catch (err) {
+    statusEl.innerHTML = `<span style="color: #ef4444;">Verification failed: ${(err as Error).message}</span>`;
+  }
+}
+
+btnVerifyCalib?.addEventListener('click', () => {
+  if (verifyResultPanel && verifyResultText) {
+    verifyResultPanel.classList.remove('hidden');
+    runVerificationTest(verifyResultText, btnAutoTrim);
+  }
+});
+
+btnModalVerify?.addEventListener('click', () => {
+  if (modalVerifyResult) {
+    modalVerifyResult.classList.remove('hidden');
+    runVerificationTest(modalVerifyResult);
+  }
+});
 
 btnCalibrate.addEventListener('click', () => {
   executeCalibration(btnCalibrate, calibStatus, true);
