@@ -47,6 +47,7 @@ const modalCalibStatus = document.getElementById('modalCalibStatus') as HTMLElem
 const modalLatencySlider = document.getElementById('modalLatencySlider') as HTMLInputElement;
 const modalLatencyDisplay = document.getElementById('modalLatencyDisplay') as HTMLElement;
 const dropModeSelect = document.getElementById('dropModeSelect') as HTMLSelectElement;
+const quickDropSelect = document.getElementById('quickDropSelect') as HTMLSelectElement | null;
 const sensSlider = document.getElementById('sensSlider') as HTMLInputElement;
 const sensVal = document.getElementById('sensVal') as HTMLElement;
 
@@ -140,10 +141,38 @@ const dropModeLabels: Record<DropMode, string> = {
   random_10: 'Random (~10% drops)',
   random_25: 'Moderate (~25% drops)',
   random_33: 'Frequent (~33% drops)',
-  bar4_silent: 'Bar 4 Silent',
   every4th: 'Every 4th Beat',
+  beats_34_silent: '2-Beat Gap (Beats 3 & 4 Silent)',
+  beats_234_silent: '3-Beat Gap (Beats 2, 3, 4 Silent)',
+  bar_alternating: '1 Bar Click, 1 Bar Silent',
+  two_bars_silent: '2 Bars Click, 2 Bars Silent',
+  bar4_silent: 'Bar 4 Silent (3 bars click, 1 bar drop)',
   none: 'Continuous (No Drops)',
 };
+
+function updateInstructionsForMode(mode: DropMode) {
+  if (!sessionInstructions || !instructionTitle || !instructionBody) return;
+
+  if (mode === 'beats_34_silent') {
+    instructionTitle.innerText = '2-Beat Gap: Beats 1 & 2 click, beats 3 & 4 silent';
+    instructionBody.innerText = 'Keep clapping on every beat (1, 2, 3, 4). The app evaluates your timing drift across beats 3 and 4!';
+  } else if (mode === 'beats_234_silent') {
+    instructionTitle.innerText = '3-Beat Gap: Beat 1 clicks, beats 2, 3, 4 silent';
+    instructionBody.innerText = 'Only beat 1 clicks. Clap through the entire measure (1, 2, 3, 4) to test internal tempo stability!';
+  } else if (mode === 'bar_alternating') {
+    instructionTitle.innerText = 'Alternating Bars: 1 bar click, 1 bar completely silent';
+    instructionBody.innerText = 'Lock into bar 1, then clap all 4 beats steadily through the silent bar!';
+  } else if (mode === 'two_bars_silent') {
+    instructionTitle.innerText = 'Extended Gap: 2 bars click, 2 full bars silent';
+    instructionBody.innerText = 'Clap steadily through the 8 silent beats without rushing or dragging.';
+  } else if (mode === 'none') {
+    instructionTitle.innerText = 'Continuous Metronome (No Drops)';
+    instructionBody.innerText = 'Clap along with every click to benchmark your baseline phase accuracy.';
+  } else {
+    instructionTitle.innerText = 'Clap along with each click!';
+    instructionBody.innerText = 'Keep clapping steadily in rhythm. When clicks randomly drop, keep clapping — the app will measure how on-beat you are.';
+  }
+}
 
 function updateDropModeUI(mode: DropMode) {
   currentDropMode = mode;
@@ -153,9 +182,13 @@ function updateDropModeUI(mode: DropMode) {
   if (dropModeSelect) {
     dropModeSelect.value = mode;
   }
+  if (quickDropSelect) {
+    quickDropSelect.value = mode;
+  }
   if (metronome) {
     metronome.setDropMode(mode);
   }
+  updateInstructionsForMode(mode);
 }
 
 // Initialize default mode
@@ -290,6 +323,12 @@ modalLatencySlider.addEventListener('input', () => {
 
 dropModeSelect.addEventListener('change', () => {
   updateDropModeUI(dropModeSelect.value as DropMode);
+});
+
+quickDropSelect?.addEventListener('change', () => {
+  if (quickDropSelect) {
+    updateDropModeUI(quickDropSelect.value as DropMode);
+  }
 });
 
 sensSlider.addEventListener('input', () => {
@@ -442,32 +481,32 @@ function renderEvaluationResult(ev: BeatEvaluation) {
   const absMs = Math.abs(ev.offsetMs);
 
   if (absMs <= 12) {
-    resultBanner.innerHTML = `<span style="color: #10b981;">🌟 PRO POCKET: ${sign}${ev.offsetMs} ms (${dir}) &bull; Jazz Master precision</span>`;
+    resultBanner.innerHTML = `<span style="color: #10b981;">🌟 PRO POCKET [Beat ${ev.beatNumber}]: ${sign}${ev.offsetMs} ms (${dir}) &bull; Jazz Master precision</span>`;
     instructionIcon.innerText = '🌟';
-    instructionTitle.innerText = `Elite Pocket! (${sign}${ev.offsetMs} ms)`;
+    instructionTitle.innerText = `Elite Pocket on Beat ${ev.beatNumber}! (${sign}${ev.offsetMs} ms)`;
     instructionBody.innerText = `Within ±12ms: Elite jazz rhythm section standard (Friberg & Sundström study). Impeccable timing!`;
   } else if (absMs <= 22) {
-    resultBanner.innerHTML = `<span style="color: #38bdf8;">🎵 TRAINED MUSICIAN: ${sign}${ev.offsetMs} ms (${dir}) &bull; Excellent</span>`;
+    resultBanner.innerHTML = `<span style="color: #38bdf8;">🎵 TRAINED MUSICIAN [Beat ${ev.beatNumber}]: ${sign}${ev.offsetMs} ms (${dir}) &bull; Excellent</span>`;
     instructionIcon.innerText = '🎵';
-    instructionTitle.innerText = `Trained Musician Timing (${sign}${ev.offsetMs} ms)`;
+    instructionTitle.innerText = `Trained Musician Timing on Beat ${ev.beatNumber} (${sign}${ev.offsetMs} ms)`;
     instructionBody.innerText = `Within ±22ms: Consistent with active performing musicians. Great internal pocket!`;
   } else if (absMs <= 35) {
-    resultBanner.innerHTML = `<span style="color: #fbbf24;">🎸 GOOD: ${sign}${ev.offsetMs} ms (${dir}) &bull; Solid groove</span>`;
+    resultBanner.innerHTML = `<span style="color: #fbbf24;">🎸 SOLID GROOVE [Beat ${ev.beatNumber}]: ${sign}${ev.offsetMs} ms (${dir}) &bull; Solid</span>`;
     instructionIcon.innerText = '🎸';
-    instructionTitle.innerText = `Good Timing! (${sign}${ev.offsetMs} ms)`;
+    instructionTitle.innerText = `Good Timing on Beat ${ev.beatNumber}! (${sign}${ev.offsetMs} ms)`;
     instructionBody.innerText = `Within ±35ms: Solid rhythm foundation. Ahead of typical untrained listeners.`;
   } else if (absMs <= 50) {
-    resultBanner.innerHTML = `<span style="color: #f97316;">🥁 TYPICAL NON-MUSICIAN: ${sign}${ev.offsetMs} ms (${dir})</span>`;
+    resultBanner.innerHTML = `<span style="color: #f97316;">🥁 TYPICAL NON-MUSICIAN [Beat ${ev.beatNumber}]: ${sign}${ev.offsetMs} ms (${dir})</span>`;
     instructionIcon.innerText = '🥁';
-    instructionTitle.innerText = `Typical Human Variance (${sign}${ev.offsetMs} ms)`;
+    instructionTitle.innerText = `Timing on Beat ${ev.beatNumber}: ${sign}${ev.offsetMs} ms (${dir})`;
     instructionBody.innerText = ev.offsetMs < 0
-      ? `You rushed ahead by ${absMs}ms. Non-musicians frequently anticipate the click—stay relaxed and let the pulse arrive.`
-      : `You dragged behind by ${absMs}ms. Non-musicians frequently hesitate on silent drops—anticipate the pulse with confidence.`;
+      ? `You rushed ahead on beat ${ev.beatNumber} by ${absMs}ms. Stay relaxed and let the pulse arrive.`
+      : `You dragged behind on beat ${ev.beatNumber} by ${absMs}ms. Anticipate the silent pulse with confidence.`;
   } else {
-    resultBanner.innerHTML = `<span style="color: #ef4444;">⚠️ POOR: ${sign}${ev.offsetMs} ms (${dir}) &bull; Significant drift</span>`;
+    resultBanner.innerHTML = `<span style="color: #ef4444;">⚠️ TIMING DRIFT [Beat ${ev.beatNumber}]: ${sign}${ev.offsetMs} ms (${dir})</span>`;
     instructionIcon.innerText = '⚠️';
-    instructionTitle.innerText = `Timing Drift: ${sign}${ev.offsetMs} ms (${dir})`;
-    instructionBody.innerText = `More than 50ms off the beat. Focus closely on locking into the audible clicks before the drops.`;
+    instructionTitle.innerText = `Timing Drift on Beat ${ev.beatNumber}: ${sign}${ev.offsetMs} ms (${dir})`;
+    instructionBody.innerText = `More than 50ms off beat ${ev.beatNumber}. Focus on holding internal tempo across silent gaps.`;
   }
 }
 

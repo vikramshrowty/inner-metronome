@@ -127,7 +127,7 @@
             </div>
           </div>
 
-          <div class="controls-grid">
+          <div class="controls-grid" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));">
             <div class="control-item">
               <label for="bpmSlider">Tempo: <strong id="bpmValue" style="color: var(--accent); font-size: 1rem;">100 BPM</strong></label>
               <div style="display: flex; gap: 8px; align-items: center;">
@@ -138,13 +138,42 @@
             </div>
 
             <div class="control-item">
-              <label>Dropout Training Mode:</label>
-              <div style="display: flex; align-items: center; justify-content: space-between; background-color: var(--bg-input); border: 1px solid var(--border); padding: 8px 12px; border-radius: 6px;">
-                <span id="currentDropModeDisplay" style="font-size: 0.88rem; font-weight: 600; color: #fbbf24;">Random (~10% drops)</span>
-                <button class="btn btn-outline btn-sm" id="btnMetroSettings" style="padding: 4px 10px; font-size: 0.78rem;" title="Configure Dropout Mode in Settings">
-                  ⚙ Change
-                </button>
-              </div>
+              <label for="quickDropSelect">Dropout Mode (Base Click):</label>
+              <select id="quickDropSelect" style="width: 100%;">
+                <optgroup label="Single-Beat Drops">
+                  <option value="random_10" selected>Random Drops (~10%)</option>
+                  <option value="random_25">Moderate Drops (~25%)</option>
+                  <option value="random_33">Frequent Drops (~33%)</option>
+                  <option value="every4th">Every 4th Beat</option>
+                </optgroup>
+                <optgroup label="Multi-Beat Gaps (Clap Every Beat!)">
+                  <option value="beats_34_silent">2-Beat Gap (Beats 3 & 4 silent)</option>
+                  <option value="beats_234_silent">3-Beat Gap (Beats 2, 3, 4 silent)</option>
+                  <option value="bar_alternating">1 Bar Click, 1 Bar Silent</option>
+                  <option value="two_bars_silent">2 Bars Click, 2 Bars Silent</option>
+                  <option value="bar4_silent">Bar 4 Silent</option>
+                </optgroup>
+                <optgroup label="Continuous">
+                  <option value="none">No Drops (Continuous)</option>
+                </optgroup>
+              </select>
+            </div>
+
+            <div class="control-item">
+              <label for="quickDistractorSelect">Distractor Overlay (Counter-Rhythm):</label>
+              <select id="quickDistractorSelect" style="width: 100%;">
+                <option value="none" selected>None (Clean Metronome)</option>
+                <optgroup label="Metric Cross-Rhythms (Over Measure)">
+                  <option value="hemiola_3_4">3-over-4 Hemiola (3 in 4 beats)</option>
+                  <option value="quintuplet_5_4">5-over-4 Polyrhythm (5 in 4 beats)</option>
+                </optgroup>
+                <optgroup label="Subdivisions & Syncopations">
+                  <option value="triplets_3x">3X Triplet Subdivision</option>
+                  <option value="syncopated_16th_4x">4X 16th Syncopation (e & a)</option>
+                  <option value="offbeat_eighths">Offbeat Eighth-Notes (The '&')</option>
+                  <option value="half_time_upbeat">1/2 Base Offbeat (Half-Time)</option>
+                </optgroup>
+              </select>
             </div>
           </div>
 
@@ -336,15 +365,60 @@
                 Dropout Training Mode:
               </label>
               <select id="dropModeSelect" style="width: 100%; margin-top: 4px;">
-                <option value="random_10" selected>Random Drops (~10% of beats) &mdash; Default</option>
-                <option value="random_25">Moderate Drops (~25% of beats)</option>
-                <option value="random_33">Frequent Drops (~33% of beats)</option>
-                <option value="bar4_silent">Bar 4 Silent (3 bars click, 1 bar drop)</option>
-                <option value="every4th">Every 4th Beat Dropped</option>
-                <option value="none">Continuous Click (No Drops)</option>
+                <optgroup label="Single-Beat Drops (Local Phase Correction)">
+                  <option value="random_10" selected>Random Drops (~10% of beats) &mdash; Default</option>
+                  <option value="random_25">Moderate Drops (~25% of beats)</option>
+                  <option value="random_33">Frequent Drops (~33% of beats)</option>
+                  <option value="every4th">Every 4th Beat Dropped</option>
+                </optgroup>
+                <optgroup label="Multi-Beat Gaps (Drift & Tempo Stability)">
+                  <option value="beats_34_silent">2-Beat Gap (Beats 3 & 4 silent every bar)</option>
+                  <option value="beats_234_silent">3-Beat Gap (Beat 1 clicks, beats 2-3-4 silent)</option>
+                  <option value="bar_alternating">1 Bar Click, 1 Bar Silent (4 beats silent)</option>
+                  <option value="two_bars_silent">2 Bars Click, 2 Bars Silent (8 beats silent)</option>
+                  <option value="bar4_silent">Bar 4 Silent (3 bars click, 1 bar silent)</option>
+                </optgroup>
+                <optgroup label="Continuous">
+                  <option value="none">Continuous Click (No Drops)</option>
+                </optgroup>
               </select>
               <div style="font-size: 0.78rem; color: var(--text-muted); margin-top: 2px;">
-                10% random drops test unexpected gaps without interrupting your musical flow.
+                In multi-beat gaps, clap every beat through the silence to measure drift per beat.
+              </div>
+            </div>
+
+            <!-- Distractor / Counter-Rhythm Overlay -->
+            <div class="control-item" style="margin-top: 14px;">
+              <label for="distractorModeSelect" style="font-size: 0.95rem; font-weight: 600; color: var(--text-main);">
+                Distractor / Counter-Rhythm Overlay:
+              </label>
+              <select id="distractorModeSelect" style="width: 100%; margin-top: 4px;">
+                <option value="none" selected>None (Clean Metronome)</option>
+                <optgroup label="Metric Cross-Rhythms (Over Measure)">
+                  <option value="hemiola_3_4">3-over-4 Cross-Rhythm (Hemiola)</option>
+                  <option value="quintuplet_5_4">5-over-4 Polyrhythm (5 in 4 beats)</option>
+                </optgroup>
+                <optgroup label="Subdivisions & Syncopations">
+                  <option value="triplets_3x">3X Triplet Subdivision (Eighth-Note Triplets)</option>
+                  <option value="syncopated_16th_4x">4X Syncopation (Offbeat 16ths 'e' and 'a')</option>
+                  <option value="offbeat_eighths">Offbeat Eighth-Notes (The '&' of every beat)</option>
+                  <option value="half_time_upbeat">1/2 Base Offbeat (Upbeat Half-Time)</option>
+                </optgroup>
+              </select>
+              <div style="font-size: 0.78rem; color: var(--text-muted); margin-top: 2px;">
+                Plays a secondary woodblock counter-rhythm. Ignore it and lock onto the quarter-note downbeats.
+              </div>
+            </div>
+
+            <!-- Distractor Volume Slider -->
+            <div class="slider-group" id="distractorVolumeGroup" style="margin-top: 10px;">
+              <label for="distractorVolumeSlider">
+                <span>Distractor Overlay Volume:</span>
+                <span id="distractorVolumeDisplay" style="color: #a78bfa; font-weight: 700;">60%</span>
+              </label>
+              <input type="range" id="distractorVolumeSlider" min="0" max="100" value="60" step="5" />
+              <div style="font-size: 0.78rem; color: var(--text-muted); margin-top: 2px;">
+                🎧 <em>Tip: Wear headphones when practicing with distractors to eliminate acoustic microphone bleed.</em>
               </div>
             </div>
 
