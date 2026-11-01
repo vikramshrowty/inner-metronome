@@ -52,8 +52,8 @@ const sensSlider = document.getElementById('sensSlider') as HTMLInputElement;
 const sensVal = document.getElementById('sensVal') as HTMLElement;
 
 // Trainer Elements
-const btnMetroSettings = document.getElementById('btnMetroSettings') as HTMLButtonElement;
-const currentDropModeDisplay = document.getElementById('currentDropModeDisplay') as HTMLElement;
+const btnMetroSettings = document.getElementById('btnMetroSettings') as HTMLButtonElement | null;
+const currentDropModeDisplay = document.getElementById('currentDropModeDisplay') as HTMLElement | null;
 const sessionInstructions = document.getElementById('sessionInstructions') as HTMLElement;
 const instructionIcon = document.getElementById('instructionIcon') as HTMLElement;
 const instructionTitle = document.getElementById('instructionTitle') as HTMLElement;
@@ -302,7 +302,7 @@ function closeSettingsModal() {
 }
 
 btnOpenSettings.addEventListener('click', openSettingsModal);
-btnMetroSettings.addEventListener('click', openSettingsModal);
+btnMetroSettings?.addEventListener('click', openSettingsModal);
 btnCloseSettings.addEventListener('click', closeSettingsModal);
 btnSaveSettings.addEventListener('click', closeSettingsModal);
 
