@@ -460,10 +460,7 @@ async function startSession() {
       if (dot) {
         if (isDropped) {
           dot.classList.add('dropped-active');
-          dropBanner.innerHTML = `⚠️ BEAT ${beat} DROPPED &mdash; CLAP NOW!`;
-          if (instructionIcon) instructionIcon.innerText = '⚡';
-          if (instructionTitle) instructionTitle.innerText = `Beat ${beat} dropped silent! Keep clapping!`;
-          if (instructionBody) instructionBody.innerText = 'Listening for your clap to test your inner metronome timing...';
+          dropBanner.innerHTML = `⚠️ Click dropped &mdash; CLAP NOW!`;
         } else {
           dot.classList.add('active');
           dropBanner.innerHTML = '';
@@ -556,47 +553,16 @@ btnTogglePlay.addEventListener('click', () => {
 
 function renderEvaluationResult(ev: BeatEvaluation) {
   if (ev.accuracy === 'missed') {
-    resultBanner.innerHTML = `<span style="color: #ef4444;">❌ MISSED: Beat ${ev.beatNumber} dropped, but no clap was registered</span>`;
-    if (instructionIcon) instructionIcon.innerText = '❌';
-    if (instructionTitle) instructionTitle.innerText = 'No clap detected on dropped beat';
-    if (instructionBody) instructionBody.innerText = 'Be sure to clap audibly on every beat, including silent ones.';
+    resultBanner.innerHTML = `<span style="color: #ef4444; font-weight: 600;">❌ Missed (no clap) &bull; Bad</span>`;
     return;
   }
 
-  const sign = ev.offsetMs > 0 ? '+' : '';
-  const dir = ev.offsetMs < 0 ? 'rushing' : ev.offsetMs > 0 ? 'dragging' : 'dead center';
   const absMs = Math.abs(ev.offsetMs);
+  const dir = ev.offsetMs < 0 ? 'early' : ev.offsetMs > 0 ? 'late' : 'on time';
+  const timingText = absMs === 0 ? '0 ms' : `${absMs} ms ${dir}`;
+  const isGood = absMs <= 35;
 
-  if (absMs <= 12) {
-    resultBanner.innerHTML = `<span style="color: #10b981;">🌟 PRO POCKET [Beat ${ev.beatNumber}]: ${sign}${ev.offsetMs} ms (${dir}) &bull; Jazz Master precision</span>`;
-    if (instructionIcon) instructionIcon.innerText = '🌟';
-    if (instructionTitle) instructionTitle.innerText = `Elite Pocket on Beat ${ev.beatNumber}! (${sign}${ev.offsetMs} ms)`;
-    if (instructionBody) instructionBody.innerText = `Within ±12ms: Elite jazz rhythm section standard (Friberg & Sundström study). Impeccable timing!`;
-  } else if (absMs <= 22) {
-    resultBanner.innerHTML = `<span style="color: #38bdf8;">🎵 TRAINED MUSICIAN [Beat ${ev.beatNumber}]: ${sign}${ev.offsetMs} ms (${dir}) &bull; Excellent</span>`;
-    if (instructionIcon) instructionIcon.innerText = '🎵';
-    if (instructionTitle) instructionTitle.innerText = `Trained Musician Timing on Beat ${ev.beatNumber} (${sign}${ev.offsetMs} ms)`;
-    if (instructionBody) instructionBody.innerText = `Within ±22ms: Consistent with active performing musicians. Great internal pocket!`;
-  } else if (absMs <= 35) {
-    resultBanner.innerHTML = `<span style="color: #fbbf24;">🎸 SOLID GROOVE [Beat ${ev.beatNumber}]: ${sign}${ev.offsetMs} ms (${dir}) &bull; Solid</span>`;
-    if (instructionIcon) instructionIcon.innerText = '🎸';
-    if (instructionTitle) instructionTitle.innerText = `Good Timing on Beat ${ev.beatNumber}! (${sign}${ev.offsetMs} ms)`;
-    if (instructionBody) instructionBody.innerText = `Within ±35ms: Solid rhythm foundation. Ahead of typical untrained listeners.`;
-  } else if (absMs <= 50) {
-    resultBanner.innerHTML = `<span style="color: #f97316;">🥁 TYPICAL NON-MUSICIAN [Beat ${ev.beatNumber}]: ${sign}${ev.offsetMs} ms (${dir})</span>`;
-    if (instructionIcon) instructionIcon.innerText = '🥁';
-    if (instructionTitle) instructionTitle.innerText = `Timing on Beat ${ev.beatNumber}: ${sign}${ev.offsetMs} ms (${dir})`;
-    if (instructionBody) {
-      instructionBody.innerText = ev.offsetMs < 0
-        ? `You rushed ahead on beat ${ev.beatNumber} by ${absMs}ms. Stay relaxed and let the pulse arrive.`
-        : `You dragged behind on beat ${ev.beatNumber} by ${absMs}ms. Anticipate the silent pulse with confidence.`;
-    }
-  } else {
-    resultBanner.innerHTML = `<span style="color: #ef4444;">⚠️ TIMING DRIFT [Beat ${ev.beatNumber}]: ${sign}${ev.offsetMs} ms (${dir})</span>`;
-    if (instructionIcon) instructionIcon.innerText = '⚠️';
-    if (instructionTitle) instructionTitle.innerText = `Timing Drift on Beat ${ev.beatNumber}: ${sign}${ev.offsetMs} ms (${dir})`;
-    if (instructionBody) instructionBody.innerText = `More than 50ms off beat ${ev.beatNumber}. Focus on holding internal tempo across silent gaps.`;
-  }
+  resultBanner.innerHTML = `<span style="color: ${isGood ? '#10b981' : '#ef4444'}; font-weight: 600;">${isGood ? '✅' : '⚠️'} ${timingText} &bull; ${isGood ? 'Good' : 'Bad'}</span>`;
 }
 
 function updateStatsDisplay() {
