@@ -366,6 +366,37 @@ btnBpmPlus.addEventListener('click', () => {
 
 // 4. METRONOME & CLAP DETECTION SESSION
 let isPlaying = false;
+let wakeLock: WakeLockSentinel | null = null;
+
+async function requestWakeLock() {
+  if ('wakeLock' in navigator) {
+    try {
+      wakeLock = await navigator.wakeLock.request('screen');
+      wakeLock.addEventListener('release', () => {
+        wakeLock = null;
+      });
+    } catch (err) {
+      console.warn('Screen Wake Lock request failed:', err);
+    }
+  }
+}
+
+async function releaseWakeLock() {
+  if (wakeLock) {
+    try {
+      await wakeLock.release();
+    } catch (err) {
+      console.warn('Screen Wake Lock release failed:', err);
+    }
+    wakeLock = null;
+  }
+}
+
+document.addEventListener('visibilitychange', async () => {
+  if (isPlaying && document.visibilityState === 'visible') {
+    await requestWakeLock();
+  }
+});
 
 async function startSession() {
   const { ctx, stream } = await ensureAudio();
@@ -416,6 +447,7 @@ async function startSession() {
   clapDetector.start();
   metronome.start();
   isPlaying = true;
+  requestWakeLock();
 
   // Informative instruction update
   sessionInstructions.classList.add('playing');
@@ -441,6 +473,7 @@ function stopSession() {
     clapDetector.stop();
   }
   isPlaying = false;
+  releaseWakeLock();
   dots.forEach((d) => d.classList.remove('active', 'dropped-active'));
   dropBanner.innerHTML = '';
 
