@@ -19,7 +19,7 @@ let currentDropMode: DropMode = 'random_10'; // 10% default as requested
 const viewCalibration = document.getElementById('viewCalibration') as HTMLElement;
 const viewTrainer = document.getElementById('viewTrainer') as HTMLElement;
 const btnOpenSettings = document.getElementById('btnOpenSettings') as HTMLButtonElement;
-const headerOffsetBadge = document.getElementById('headerOffsetBadge') as HTMLElement;
+const headerOffsetBadge = document.getElementById('headerOffsetBadge') as HTMLElement | null;
 const postCalibActions = document.getElementById('postCalibActions') as HTMLElement;
 const btnContinueToTrainer = document.getElementById('btnContinueToTrainer') as HTMLButtonElement;
 const btnSkipCalibration = document.getElementById('btnSkipCalibration') as HTMLButtonElement;
@@ -46,7 +46,7 @@ const btnModalCalibrate = document.getElementById('btnModalCalibrate') as HTMLBu
 const modalCalibStatus = document.getElementById('modalCalibStatus') as HTMLElement;
 const modalLatencySlider = document.getElementById('modalLatencySlider') as HTMLInputElement;
 const modalLatencyDisplay = document.getElementById('modalLatencyDisplay') as HTMLElement;
-const dropModeSelect = document.getElementById('dropModeSelect') as HTMLSelectElement;
+const dropModeSelect = document.getElementById('dropModeSelect') as HTMLSelectElement | null;
 const quickDropSelect = document.getElementById('quickDropSelect') as HTMLSelectElement | null;
 const sensSlider = document.getElementById('sensSlider') as HTMLInputElement;
 const sensVal = document.getElementById('sensVal') as HTMLElement;
@@ -130,10 +130,54 @@ function updateCalibratedOffset(ms: number) {
   calibratedLatencyMs = ms;
   modalLatencySlider.value = ms.toString();
   modalLatencyDisplay.innerText = `${ms} ms`;
-  headerOffsetBadge.innerText = `Offset: ${ms}ms`;
+  if (headerOffsetBadge) {
+    headerOffsetBadge.innerText = `Offset: ${ms}ms`;
+  }
   if (metronome) {
     metronome.setLatencyOffsetMs(ms);
   }
+}
+
+// Adaptive Dropout Difficulty Controller
+let adaptiveGoodHits = 0;
+let adaptiveStruggles = 0;
+
+function evaluateAdaptiveDifficulty(ev: BeatEvaluation) {
+  const isAccurate = ev.accuracy === 'perfect' || ev.accuracy === 'good';
+
+  if (isAccurate) {
+    adaptiveGoodHits++;
+    adaptiveStruggles = 0;
+
+    // Advance to 33% random drops after 3 accurate claps on dropped beats
+    if (currentDropMode === 'random_10' && adaptiveGoodHits >= 3) {
+      currentDropMode = 'random_33';
+      metronome?.setDropMode('random_33');
+      adaptiveGoodHits = 0;
+      adaptiveStruggles = 0;
+      dropBanner.innerHTML = `<span style="color: #38bdf8; font-weight: 700;">🔥 LEVEL UP: Accurate timing! Dropouts increased to 33%</span>`;
+    }
+  } else {
+    // User missed or drifted (>35ms off)
+    adaptiveStruggles++;
+    adaptiveGoodHits = 0;
+
+    // Fall back to 10% random drops if struggling on 33%
+    if (currentDropMode === 'random_33' && adaptiveStruggles >= 2) {
+      currentDropMode = 'random_10';
+      metronome?.setDropMode('random_10');
+      adaptiveGoodHits = 0;
+      adaptiveStruggles = 0;
+      dropBanner.innerHTML = `<span style="color: #fbbf24; font-weight: 700;">📉 ADAPTING: Stepping back to 10% drops to rebuild accuracy</span>`;
+    }
+  }
+}
+
+function resetAdaptiveDifficulty() {
+  currentDropMode = 'random_10';
+  adaptiveGoodHits = 0;
+  adaptiveStruggles = 0;
+  metronome?.setDropMode('random_10');
 }
 
 // Drop Mode Label Management
@@ -324,8 +368,10 @@ modalLatencySlider.addEventListener('input', () => {
   updateCalibratedOffset(val);
 });
 
-dropModeSelect.addEventListener('change', () => {
-  updateDropModeUI(dropModeSelect.value as DropMode);
+dropModeSelect?.addEventListener('change', () => {
+  if (dropModeSelect) {
+    updateDropModeUI(dropModeSelect.value as DropMode);
+  }
 });
 
 quickDropSelect?.addEventListener('change', () => {
@@ -428,6 +474,7 @@ async function startSession() {
     metronome.onEvaluation((evaluation: BeatEvaluation) => {
       sessionStats.addResult(evaluation);
       visualizer?.addClapMarker(evaluation.offsetMs, evaluation.accuracy);
+      evaluateAdaptiveDifficulty(evaluation);
       renderEvaluationResult(evaluation);
       updateStatsDisplay();
     });
@@ -598,6 +645,7 @@ function updateStatsDisplay() {
 
 btnResetStats.addEventListener('click', () => {
   sessionStats.reset();
+  resetAdaptiveDifficulty();
   updateStatsDisplay();
   resultBanner.innerHTML = '<span style="color: var(--text-muted); font-size: 1rem; font-weight: normal;">Session stats reset. Clap along with the groove!</span>';
 });
