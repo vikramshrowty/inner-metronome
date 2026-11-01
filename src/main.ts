@@ -220,7 +220,10 @@ async function executeCalibration(
       calibBadge.className = 'badge badge-success';
       calibBadge.innerText = `Calibrated`;
       postCalibActions.classList.remove('hidden');
-      statusEl.innerHTML = `<span style="color: #34d399;">System calibration complete (${result.latencyMs}ms offset)!</span>`;
+      statusEl.innerHTML = `<span style="color: #34d399;">System calibration complete (${result.latencyMs}ms offset)! Opening metronome...</span>`;
+      setTimeout(() => {
+        transitionToTrainer();
+      }, 700);
     } else {
       statusEl.innerHTML = `<span style="color: #34d399;">System re-calibrated successfully (${result.latencyMs}ms offset).</span>`;
     }

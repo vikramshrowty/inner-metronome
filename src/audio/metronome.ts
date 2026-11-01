@@ -47,7 +47,7 @@ export interface BeatEvaluation {
 
 export class Metronome {
   private ctx: AudioContext;
-  private bpm = 100;
+  private bpm = 50;
   private beatsPerMeasure = 4;
   private dropMode: DropMode = 'random_10';
   private distractorMode: DistractorMode = 'none';
